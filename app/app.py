@@ -1,18 +1,23 @@
-# app/app.py
-
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit as st
+import pandas as pd
+import joblib
 from src.predict import predict_from_input
 
 st.set_page_config(page_title="Customer Churn Predictor")
 
-st.title("🔮 Customer Churn Prediction")
-st.write("Masukkan detail pelanggan untuk memprediksi kemungkinan churn.")
+st.title("🔮 Customer Churn Prediction App")
+st.write("Masukkan data pelanggan atau upload CSV untuk prediksi churn.")
 
-# Form input
+# ===============================
+# 🔹 Form Prediksi Satu-per-Satu
+# ===============================
+
+st.header("📋 Prediksi Pelanggan Individu")
+
 with st.form("churn_form"):
     gender = st.selectbox("Gender", ["Female", "Male"])
     senior = st.selectbox("Senior Citizen", ["No", "Yes"])
@@ -30,22 +35,23 @@ with st.form("churn_form"):
     streammovie = st.selectbox("Streaming Movies", ["No", "Yes"])
     contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
     paperless = st.selectbox("Paperless Billing", ["No", "Yes"])
-    payment = st.selectbox("Payment Method", ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"])
+    payment = st.selectbox("Payment Method", [
+        "Electronic check", "Mailed check",
+        "Bank transfer (automatic)", "Credit card (automatic)"
+    ])
     monthly = st.number_input("Monthly Charges", 0.0, 200.0, 70.0)
     total = st.number_input("Total Charges", 0.0, 10000.0, 1500.0)
 
     submitted = st.form_submit_button("Prediksi Churn")
 
-# Encoding sesuai model
 def encode_input():
     mapping = {
         "Yes": 1, "No": 0,
         "Female": 0, "Male": 1,
-        "No internet service": 0,
-        "No phone service": 0,
         "DSL": 0, "Fiber optic": 1,
         "Month-to-month": 0, "One year": 1, "Two year": 2,
-        "Electronic check": 0, "Mailed check": 1, "Bank transfer (automatic)": 2, "Credit card (automatic)": 3
+        "Electronic check": 0, "Mailed check": 1,
+        "Bank transfer (automatic)": 2, "Credit card (automatic)": 3
     }
 
     return {
@@ -70,10 +76,48 @@ def encode_input():
         "TotalCharges": total
     }
 
-# Proses prediksi
 if submitted:
     input_data = encode_input()
     result = predict_from_input(input_data)
 
     st.success(f"✅ Prediksi Churn: {'Ya' if result['churn_prediction'] else 'Tidak'}")
     st.info(f"📊 Probabilitas Churn: {result['churn_probability'] * 100:.2f}%")
+
+# =================================
+# 🔸 Prediksi Massal via CSV Upload
+# =================================
+
+st.header("📂 Prediksi Massal dari File CSV")
+uploaded_file = st.file_uploader("Upload file CSV", type=["csv"])
+
+if uploaded_file is not None:
+    try:
+        df_input = pd.read_csv(uploaded_file)
+
+        expected_cols = [
+            'gender', 'SeniorCitizen', 'Partner', 'Dependents', 'tenure',
+            'PhoneService', 'MultipleLines', 'InternetService', 'OnlineSecurity',
+            'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV',
+            'StreamingMovies', 'Contract', 'PaperlessBilling', 'PaymentMethod',
+            'MonthlyCharges', 'TotalCharges'
+        ]
+
+        if all(col in df_input.columns for col in expected_cols):
+            model = joblib.load("models/churn_model.pkl")
+            predictions = model.predict(df_input)
+            probs = model.predict_proba(df_input)[:, 1]
+
+            df_input["Churn_Prediction"] = predictions
+            df_input["Churn_Probability"] = probs.round(2)
+
+            st.success("✅ Prediksi berhasil!")
+            st.dataframe(df_input)
+
+            csv_download = df_input.to_csv(index=False).encode("utf-8")
+            st.download_button("⬇️ Download Hasil", csv_download, "prediksi_churn.csv", "text/csv")
+
+        else:
+            st.error("❌ Kolom tidak cocok. Pastikan CSV punya semua kolom yang diperlukan.")
+
+    except Exception as e:
+        st.error(f"❌ Terjadi error saat membaca file: {e}")
