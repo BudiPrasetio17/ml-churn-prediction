@@ -1,16 +1,22 @@
 import streamlit as st
-st.set_page_config(page_title="Customer Churn Predictor")
-
-import sys
 import os
-if not os.path.exists("logs"):
-    os.makedirs("logs")
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
+import sys
 import pandas as pd
 import joblib
+
+# Konfigurasi halaman harus di baris awal
+st.set_page_config(page_title="Customer Churn Predictor", layout="centered")
+
+# Pastikan folder logs ada
+LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
+# Tambahkan path agar modul src bisa ditemukan
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from src.predict import predict_from_input
+
 
 st.title("🔮 Customer Churn Prediction App")
 st.write("Masukkan data pelanggan atau upload CSV untuk prediksi churn.")
