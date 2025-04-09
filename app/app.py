@@ -3,37 +3,49 @@ import os
 import streamlit as st
 import pandas as pd
 import joblib
+from src.predict import predict_from_input
 
-# Buat folder logs kalau belum ada
+# === DARK/LIGHT THEME SWITCH (Manual) ===
+theme = st.sidebar.radio("🌓 Theme", ["Light", "Dark"])
+
+def set_theme(theme):
+    if theme == "Dark":
+        st.markdown(
+            """
+            <style>
+            body { background-color: #0e1117; color: white; }
+            .stApp { background-color: #0e1117; }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            """
+            <style>
+            body { background-color: white; color: black; }
+            .stApp { background-color: white; }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+set_theme(theme)
+
 if not os.path.exists("logs"):
     os.makedirs("logs")
 
-# Tambah path untuk import modul dari src
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from src.predict import predict_from_input
 
-# =====================
-# 🌗 Theme Switch (Dark/Light)
-# =====================
-from streamlit_extras.theme_switch import ThemeSwitch
+st.set_page_config(page_title="Customer Churn Predictor")
 
-switch = ThemeSwitch("🌞 / 🌙 Mode")
-theme = switch()
-
-if theme == "light":
-    st.set_page_config(page_title="Customer Churn Predictor", page_icon="🔮")
-else:
-    st.set_page_config(page_title="Customer Churn Predictor", page_icon="🔮", initial_sidebar_state="expanded")
-
-# =====================
-# 🎯 Judul dan Deskripsi
-# =====================
 st.title("🔮 Customer Churn Prediction App")
 st.write("Masukkan data pelanggan atau upload CSV untuk prediksi churn.")
 
-# =========================
-# 🔹 Form Prediksi Individu
-# =========================
+# ===============================
+# 🔹 Form Prediksi Satu-per-Satu
+# ===============================
+
 st.header("📋 Prediksi Pelanggan Individu")
 
 with st.form("churn_form"):
@@ -62,9 +74,6 @@ with st.form("churn_form"):
 
     submitted = st.form_submit_button("Prediksi Churn")
 
-# ====================
-# 🔧 Encode Input User
-# ====================
 def encode_input():
     mapping = {
         "Yes": 1, "No": 0,
@@ -100,12 +109,14 @@ def encode_input():
 if submitted:
     input_data = encode_input()
     result = predict_from_input(input_data)
+
     st.success(f"✅ Prediksi Churn: {'Ya' if result['churn_prediction'] else 'Tidak'}")
     st.info(f"📊 Probabilitas Churn: {result['churn_probability'] * 100:.2f}%")
 
-# ================================
+# =================================
 # 🔸 Prediksi Massal via CSV Upload
-# ================================
+# =================================
+
 st.header("📂 Prediksi Massal dari File CSV")
 uploaded_file = st.file_uploader("Upload file CSV", type=["csv"])
 
@@ -148,9 +159,7 @@ if uploaded_file is not None:
             probs = model.predict_proba(df_input)[:, 1]
 
             df_input["Churn_Prediction"] = predictions
-            df_input["Churn_Probability"] = probs.round(2)
 
-            # Simpan ke file log
             log_file = "logs/prediction_log.csv"
             df_log = df_input.copy()
             df_log["timestamp"] = pd.Timestamp.now()
@@ -160,10 +169,13 @@ if uploaded_file is not None:
             else:
                 df_log.to_csv(log_file, index=False)
 
+            st.info(f"📁 Hasil prediksi berhasil disimpan ke `{log_file}`")
+
+            df_input["Churn_Probability"] = probs.round(2)
+
             st.success("✅ Prediksi berhasil!")
             st.dataframe(df_input)
 
-            # Visualisasi
             st.subheader("📊 Distribusi Prediksi Churn")
             churn_counts = df_input["Churn_Prediction"].value_counts()
             churn_labels = ["Tidak Churn", "Churn"]
@@ -185,55 +197,58 @@ if uploaded_file is not None:
 
             st.bar_chart(df_input["ProbGroup"].value_counts().sort_index())
 
-            # Download
             csv_download = df_input.to_csv(index=False).encode("utf-8")
             st.download_button("⬇️ Download Hasil", csv_download, "prediksi_churn.csv", "text/csv")
+
         else:
             st.error("❌ Kolom tidak cocok. Pastikan CSV punya semua kolom yang diperlukan.")
+
     except Exception as e:
         st.error(f"❌ Terjadi error saat membaca file: {e}")
 
-# ============================
-# 🕘 Riwayat dan Filter Prediksi
-# ============================
-st.markdown("---")
-st.subheader("🕘 Riwayat Prediksi Sebelumnya")
+        st.markdown("---")
+        st.subheader("🕘 Riwayat Prediksi Sebelumnya")
 
-log_file = "logs/prediction_log.csv"
-if os.path.exists(log_file):
-    df_log = pd.read_csv(log_file)
-    df_log["timestamp"] = pd.to_datetime(df_log["timestamp"])
-    df_log["date"] = df_log["timestamp"].dt.date
+        log_file = "logs/prediction_log.csv"
 
-    # Tampilkan semua
-    st.dataframe(df_log.sort_values(by="timestamp", ascending=False))
+        if os.path.exists(log_file):
+            df_log = pd.read_csv(log_file)
+            df_log["timestamp"] = pd.to_datetime(df_log["timestamp"])
+            df_log = df_log.sort_values(by="timestamp", ascending=False)
 
-    # Filter
-    st.subheader("🔎 Filter Riwayat Prediksi")
-    min_date = df_log["date"].min()
-    max_date = df_log["date"].max()
+            st.dataframe(df_log, use_container_width=True)
 
-    start_date = st.date_input("Dari Tanggal", min_value=min_date, max_value=max_date, value=min_date)
-    end_date = st.date_input("Sampai Tanggal", min_value=min_date, max_value=max_date, value=max_date)
-    filter_churn = st.selectbox("Filter Churn", ["Semua", "Churn Saja", "Tidak Churn Saja"])
+            st.markdown("---")
+            st.subheader("🔎 Filter Riwayat Prediksi")
 
-    filtered_log = df_log[(df_log["date"] >= start_date) & (df_log["date"] <= end_date)]
-    if filter_churn == "Churn Saja":
-        filtered_log = filtered_log[filtered_log["Churn_Prediction"] == 1]
-    elif filter_churn == "Tidak Churn Saja":
-        filtered_log = filtered_log[filtered_log["Churn_Prediction"] == 0]
+            df_log["date"] = df_log["timestamp"].dt.date
+            min_date = df_log["date"].min()
+            max_date = df_log["date"].max()
 
-    st.write(f"📊 Menampilkan {len(filtered_log)} hasil prediksi:")
-    st.dataframe(filtered_log)
+            start_date = st.date_input("Dari Tanggal", min_value=min_date, max_value=max_date, value=min_date)
+            end_date = st.date_input("Sampai Tanggal", min_value=min_date, max_value=max_date, value=max_date)
 
-    # Trend Chart
-    st.markdown("---")
-    st.subheader("📈 Tren Churn Harian")
-    churn_trend = df_log.groupby(["date", "Churn_Prediction"]).size().unstack(fill_value=0)
-    st.line_chart(churn_trend.rename(columns={0: "Tidak Churn", 1: "Churn"}))
+            filter_churn = st.selectbox("Filter Churn", options=["Semua", "Churn Saja", "Tidak Churn Saja"])
 
-    # Download Log
-    csv_log = df_log.to_csv(index=False).encode("utf-8")
-    st.download_button("⬇️ Download Log", csv_log, "riwayat_prediksi.csv", "text/csv")
-else:
-    st.info("Belum ada riwayat prediksi yang tersimpan.")
+            filtered_log = df_log[(df_log["date"] >= start_date) & (df_log["date"] <= end_date)]
+
+            if filter_churn == "Churn Saja":
+                filtered_log = filtered_log[filtered_log["Churn_Prediction"] == 1]
+            elif filter_churn == "Tidak Churn Saja":
+                filtered_log = filtered_log[filtered_log["Churn_Prediction"] == 0]
+
+            st.write(f"📊 Menampilkan {len(filtered_log)} baris hasil prediksi:")
+            st.dataframe(filtered_log, use_container_width=True)
+
+            st.markdown("---")
+            st.subheader("📈 Tren Churn Harian")
+
+            df_log["date"] = df_log["timestamp"].dt.date
+            churn_trend = df_log.groupby(["date", "Churn_Prediction"]).size().unstack(fill_value=0)
+
+            st.line_chart(churn_trend.rename(columns={0: "Tidak Churn", 1: "Churn"}))
+
+            csv_log = df_log.to_csv(index=False).encode("utf-8")
+            st.download_button("⬇️ Download Log", csv_log, "riwayat_prediksi.csv", "text/csv")
+        else:
+            st.info("Belum ada riwayat prediksi yang tersimpan.")
