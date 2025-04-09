@@ -1,5 +1,8 @@
 import sys
 import os
+if not os.path.exists("logs"):
+    os.makedirs("logs")
+    
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit as st
