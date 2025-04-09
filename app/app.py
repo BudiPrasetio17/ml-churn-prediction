@@ -136,6 +136,31 @@ if uploaded_file is not None:
             st.success("✅ Prediksi berhasil!")
             st.dataframe(df_input)
 
+                    # Pie Chart Churn
+            st.subheader("📊 Distribusi Prediksi Churn")
+            churn_counts = df_input["Churn_Prediction"].value_counts()
+            churn_labels = ["Tidak Churn", "Churn"]
+            churn_values = [churn_counts.get(0, 0), churn_counts.get(1, 0)]
+
+            st.pyplot(
+                pd.Series(churn_values, index=churn_labels).plot.pie(
+                    autopct='%1.1f%%',
+                    ylabel='',
+                    title='Proporsi Churn vs Tidak Churn',
+                    figsize=(4, 4)
+                ).figure
+            )
+
+                    # Bar Chart Probabilitas
+            st.subheader("📈 Distribusi Probabilitas Churn")
+            bins = [0, 0.25, 0.5, 0.75, 1.0]
+            labels = ["0-25%", "25-50%", "50-75%", "75-100%"]
+            df_input["ProbGroup"] = pd.cut(df_input["Churn_Probability"], bins=bins, labels=labels)
+
+            st.bar_chart(df_input["ProbGroup"].value_counts().sort_index())
+
+
+
             csv_download = df_input.to_csv(index=False).encode("utf-8")
             st.download_button("⬇️ Download Hasil", csv_download, "prediksi_churn.csv", "text/csv")
 
