@@ -203,6 +203,39 @@ if uploaded_file is not None:
             st.dataframe(df_log, use_container_width=True)
 
             st.markdown("---")
+            
+            st.subheader("🔎 Filter Riwayat Prediksi")
+
+            if os.path.exists(log_file):
+                df_log = pd.read_csv(log_file)
+                df_log["timestamp"] = pd.to_datetime(df_log["timestamp"])
+                df_log["date"] = df_log["timestamp"].dt.date
+
+                # 📅 Pilih rentang tanggal
+                min_date = df_log["date"].min()
+                max_date = df_log["date"].max()
+
+                start_date = st.date_input("Dari Tanggal", min_value=min_date, max_value=max_date, value=min_date)
+                end_date = st.date_input("Sampai Tanggal", min_value=min_date, max_value=max_date, value=max_date)
+
+                # 🔀 Filter Churn / Tidak Churn
+                filter_churn = st.selectbox("Filter Churn", options=["Semua", "Churn Saja", "Tidak Churn Saja"])
+
+                # 🧼 Terapkan filter
+                filtered_log = df_log[(df_log["date"] >= start_date) & (df_log["date"] <= end_date)]
+
+                if filter_churn == "Churn Saja":
+                    filtered_log = filtered_log[filtered_log["Churn_Prediction"] == 1]
+                elif filter_churn == "Tidak Churn Saja":
+                    filtered_log = filtered_log[filtered_log["Churn_Prediction"] == 0]
+
+                st.write(f"📊 Menampilkan {len(filtered_log)} baris hasil prediksi:")
+                st.dataframe(filtered_log, use_container_width=True)
+            else:
+                st.info("Belum ada log untuk difilter.")
+
+
+            st.markdown("---")
             st.subheader("📈 Tren Churn Harian")
 
             if os.path.exists(log_file):
