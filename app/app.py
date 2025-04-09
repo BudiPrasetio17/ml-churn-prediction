@@ -1,43 +1,16 @@
+import streamlit as st
+st.set_page_config(page_title="Customer Churn Predictor")
+
 import sys
 import os
-import streamlit as st
-import pandas as pd
-import joblib
-from src.predict import predict_from_input
-
-# === DARK/LIGHT THEME SWITCH (Manual) ===
-theme = st.sidebar.radio("🌓 Theme", ["Light", "Dark"])
-
-def set_theme(theme):
-    if theme == "Dark":
-        st.markdown(
-            """
-            <style>
-            body { background-color: #0e1117; color: white; }
-            .stApp { background-color: #0e1117; }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-    else:
-        st.markdown(
-            """
-            <style>
-            body { background-color: white; color: black; }
-            .stApp { background-color: white; }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-
-set_theme(theme)
-
 if not os.path.exists("logs"):
     os.makedirs("logs")
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-st.set_page_config(page_title="Customer Churn Predictor")
+import pandas as pd
+import joblib
+from src.predict import predict_from_input
 
 st.title("🔮 Customer Churn Prediction App")
 st.write("Masukkan data pelanggan atau upload CSV untuk prediksi churn.")
@@ -217,7 +190,6 @@ if uploaded_file is not None:
             df_log = df_log.sort_values(by="timestamp", ascending=False)
 
             st.dataframe(df_log, use_container_width=True)
-
             st.markdown("---")
             st.subheader("🔎 Filter Riwayat Prediksi")
 
