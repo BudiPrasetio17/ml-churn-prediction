@@ -2,7 +2,7 @@ import sys
 import os
 if not os.path.exists("logs"):
     os.makedirs("logs")
-    
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit as st
@@ -202,8 +202,24 @@ if uploaded_file is not None:
 
             st.dataframe(df_log, use_container_width=True)
 
+            st.markdown("---")
+            st.subheader("📈 Tren Churn Harian")
+
+            if os.path.exists(log_file):
+                df_log = pd.read_csv(log_file)
+                df_log["timestamp"] = pd.to_datetime(df_log["timestamp"])
+
+                # Grouping by tanggal
+                df_log["date"] = df_log["timestamp"].dt.date
+                churn_trend = df_log.groupby(["date", "Churn_Prediction"]).size().unstack(fill_value=0)
+
+                st.line_chart(churn_trend.rename(columns={0: "Tidak Churn", 1: "Churn"}))
+
+
             # Tombol download log
             csv_log = df_log.to_csv(index=False).encode("utf-8")
             st.download_button("⬇️ Download Log", csv_log, "riwayat_prediksi.csv", "text/csv")
         else:
             st.info("Belum ada riwayat prediksi yang tersimpan.")
+
+            
