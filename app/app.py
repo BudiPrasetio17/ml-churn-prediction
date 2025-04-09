@@ -90,9 +90,32 @@ if submitted:
 st.header("📂 Prediksi Massal dari File CSV")
 uploaded_file = st.file_uploader("Upload file CSV", type=["csv"])
 
+def auto_encode(df):
+    mapping = {
+        "Yes": 1, "No": 0,
+        "Female": 0, "Male": 1,
+        "DSL": 0, "Fiber optic": 1,
+        "Month-to-month": 0, "One year": 1, "Two year": 2,
+        "Electronic check": 0, "Mailed check": 1,
+        "Bank transfer (automatic)": 2, "Credit card (automatic)": 3
+    }
+
+    for col in df.columns:
+        if df[col].dtype == "object":
+            df[col] = df[col].map(mapping).fillna(df[col])
+
+    return df
+
 if uploaded_file is not None:
     try:
         df_input = pd.read_csv(uploaded_file)
+
+        # Hapus baris header duplikat jika ada
+        if df_input.iloc[0].equals(df_input.columns.to_series()):
+            df_input = df_input.drop(index=0).reset_index(drop=True)
+
+        # Auto-encode kolom kategorikal
+        df_input = auto_encode(df_input)
 
         expected_cols = [
             'gender', 'SeniorCitizen', 'Partner', 'Dependents', 'tenure',
