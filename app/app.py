@@ -131,6 +131,20 @@ if uploaded_file is not None:
             probs = model.predict_proba(df_input)[:, 1]
 
             df_input["Churn_Prediction"] = predictions
+
+                    # Simpan ke file log
+            log_file = "logs/prediction_log.csv"
+            df_log = df_input.copy()
+            df_log["timestamp"] = pd.Timestamp.now()
+
+            if os.path.exists(log_file):
+                df_log.to_csv(log_file, mode='a', index=False, header=False)
+            else:
+                df_log.to_csv(log_file, index=False)
+            
+            st.info(f"📁 Hasil prediksi berhasil disimpan ke `{log_file}`")
+
+
             df_input["Churn_Probability"] = probs.round(2)
 
             st.success("✅ Prediksi berhasil!")
@@ -169,3 +183,24 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"❌ Terjadi error saat membaca file: {e}")
+
+                # Divider
+        st.markdown("---")
+        st.subheader("🕘 Riwayat Prediksi Sebelumnya")
+
+        log_file = "logs/prediction_log.csv"
+
+        if os.path.exists(log_file):
+            df_log = pd.read_csv(log_file)
+
+            # Opsi sort by waktu terbaru
+            df_log["timestamp"] = pd.to_datetime(df_log["timestamp"])
+            df_log = df_log.sort_values(by="timestamp", ascending=False)
+
+            st.dataframe(df_log, use_container_width=True)
+
+            # Tombol download log
+            csv_log = df_log.to_csv(index=False).encode("utf-8")
+            st.download_button("⬇️ Download Log", csv_log, "riwayat_prediksi.csv", "text/csv")
+        else:
+            st.info("Belum ada riwayat prediksi yang tersimpan.")
